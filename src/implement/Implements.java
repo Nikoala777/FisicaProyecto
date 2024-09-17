@@ -1,23 +1,27 @@
 package implement;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
+import javafx.animation.AnimationTimer;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.SubScene;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
-import javafx.util.Duration;
-import services.ServicesMRU;
+import static services.ServicesMRU.desplazamiento;
+import static services.ServicesMRU.tiempo;
+import static services.ServicesMRU.velocidad;
 
 /**
  *
  * @author sergiopro
  */
 public class Implements {
+    public static XYChart.Series<Number, Number> serieXT = new XYChart.Series<>();
+    public static XYChart.Series<Number, Number> serieVT = new XYChart.Series<>();
 
     
     public void preFloor(Box floor, Group root3D){      
@@ -54,40 +58,63 @@ public class Implements {
     public void preCameraFollow(PerspectiveCamera cameraFollow, SubScene scene){
         cameraFollow.setNearClip(1);
         cameraFollow.setFarClip(10000);
-        cameraFollow.setTranslateX(0); // Inicia dentro del cuarto
-        cameraFollow.setTranslateY(0);
-        cameraFollow.setTranslateZ(0);
-        cameraFollow.setRotationAxis(Rotate.Y_AXIS);  // Eje de rotación
-        cameraFollow.setRotate(0);  // Inicializa la rotación
+        cameraFollow.setFieldOfView(100);
+        cameraFollow.setTranslateY(-2000);
+        cameraFollow.setTranslateZ(-1000);
+        cameraFollow.setRotationAxis(Rotate.X_AXIS);  // Eje de rotación
+        cameraFollow.setRotate(-60);  // Inicializa la rotación
     }
     
-    public void setMovement(Sphere particula){
-         // Crear la animación usando Timeline
-        Timeline movimiento = new Timeline();
-        
-        // Crear un KeyFrame que se repite cada 16ms (~60 FPS)
-        KeyFrame frame = new KeyFrame(Duration.millis(16), event -> {
-            // Calcular el desplazamiento por segundo
-            double desplazamientoPorSegundo = ServicesMRU.desplazamiento / ServicesMRU.tiempo;
-            
-            // Obtener el tiempo transcurrido desde el inicio de la animación
-            double deltaTime = 16 / 1000.0; // Duración del KeyFrame en segundos
+    public static void setMovement(Sphere particula) {
+        // Variables para controlar el desplazamiento
+        velocidad = desplazamiento / tiempo; // metros/segundo
+        final long[] previousTime = {0};
+        final double[] tiempoTranscurrido = {0}; // Mantiene el tiempo acumulado
 
-            // Calcular el desplazamiento actual
-            double desplazamientoActual = desplazamientoPorSegundo * deltaTime;
+        // Usar AnimationTimer en lugar de Timeline para controlar el frame rate
+        AnimationTimer timer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (previousTime[0] == 0) {
+                    previousTime[0] = now;
+                    return;
+                }
 
-            // Actualizar la posición en el eje X
-            particula.setTranslateX(particula.getTranslateX() + desplazamientoActual);
-        });
 
-        // Establecer la duración total de la animación
-        movimiento.getKeyFrames().add(frame);
-        
-        // Definir la duración de la animación y que se repita durante ese tiempo
-        movimiento.setCycleCount((int) (ServicesMRU.tiempo * 1000 / 16));
-        
+                // Calcular el tiempo transcurrido entre frames (en segundos)
+                double deltaTime = (now - previousTime[0]) / 1_000_000_000.0;
+                previousTime[0] = now;
+                tiempoTranscurrido[0] += deltaTime;
+
+                // Calcular el desplazamiento
+                double desplazamientoActual = velocidad * deltaTime;
+                particula.setTranslateX(particula.getTranslateX() + desplazamientoActual);
+                
+                // Actualizar la gráfica x(t)
+                serieXT.getData().add(new XYChart.Data<>(tiempoTranscurrido[0], particula.getTranslateX()));
+
+                // Actualizar la gráfica v(t) (en este caso la velocidad es constante)
+                serieVT.getData().add(new XYChart.Data<>(tiempoTranscurrido[0], velocidad));
+
+                // Detener la animación cuando se haya alcanzado el desplazamiento total
+                if (particula.getTranslateX() >= desplazamiento) {
+                    this.stop();
+                    MRUCalculator calculadora = new MRUCalculator();
+                    calculadora.calculosMRU();
+                }
+            }
+        };
+
         // Iniciar la animación
-        movimiento.play();
-        System.out.println("Me invocarooooooooooooooooooooooon");
+        timer.start();
+        System.out.println("Animación iniciada");
+    }
+    
+    public static void updateGraphicXT(LineChart<Number, Number> graficoXT){
+        graficoXT.getData().add(serieXT);
+    }
+    
+    public static void updateGraphicVT(LineChart<Number, Number> graficoVT){
+        graficoVT.getData().add(serieVT);
     }
 }

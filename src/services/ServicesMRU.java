@@ -15,6 +15,8 @@ import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
 import javafx.scene.SubScene;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -37,6 +39,7 @@ public class ServicesMRU {
     Implements implement = new Implements();
     public static double desplazamiento=0;
     public static double tiempo=0;
+    public static double velocidad=0;
     
     public VBox createControlPanel(SubScene scene, PerspectiveCamera cameraFollow, PerspectiveCamera cameraExternal, Group root3D) {
         VBox controlPanel = new VBox(10);       
@@ -80,7 +83,7 @@ public class ServicesMRU {
             "-fx-border-radius: 5;" +  // Bordes redondeados
             "-fx-background-radius: 5;"  // Bordes redondeados para el fondo
         );
-        x_tButton.setOnAction(e -> x_t());        
+        x_tButton.setOnAction(e -> x_t(root3D));        
         
         Button v_tButton = new Button("v/t");
         v_tButton.setStyle(
@@ -91,7 +94,7 @@ public class ServicesMRU {
             "-fx-border-radius: 5;" +  // Bordes redondeados
             "-fx-background-radius: 5;"  // Bordes redondeados para el fondo
         );       
-        v_tButton.setOnAction(e -> v_t());
+        v_tButton.setOnAction(e -> v_t(root3D));
         
         Button switchCameraButton = new Button("Cambiar cámara");
         switchCameraButton.setStyle(
@@ -128,7 +131,6 @@ public class ServicesMRU {
     }
     
     private void showXDialog(Sphere particula) {
-        desplazamiento=0;
         Stage dialog = new Stage();
         dialog.setTitle("Elija el Desplazamiento en metros que desea ver reflejado");
 
@@ -141,7 +143,7 @@ public class ServicesMRU {
                 desplazamiento=Double.parseDouble(textoDesplazamiento.getText());
                 dialog.close();
                 if(desplazamiento!=0 && tiempo>0){
-                            implement.setMovement(particula);
+                    Implements.setMovement(particula);
                 }
             } 
             catch (NumberFormatException ex) {
@@ -160,7 +162,6 @@ public class ServicesMRU {
     }
     
     private void showTDialog(Sphere particula) {
-        tiempo=0;
         Stage dialog = new Stage();
         dialog.setTitle("Defina el tiempo en el cual se desplazará");
 
@@ -172,7 +173,7 @@ public class ServicesMRU {
                 tiempo=Double.parseDouble(textoTiempo.getText());
                 dialog.close();
                 if(desplazamiento!=0 && tiempo>0){
-                            implement.setMovement(particula);
+                    Implements.setMovement(particula);
                 }
             } catch (NumberFormatException ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -189,21 +190,52 @@ public class ServicesMRU {
         dialog.show();
     }
     
-    private void x_t() {
+    private void x_t(Group root3D) {
+        //Crear dialog
+        Stage dialog = new Stage();
+        dialog.setTitle("Gráfica: Desplazamiento en función del tiempo (x/t)");
         
+        // Ejes para la gráfica de desplazamiento x(t)
+        NumberAxis xAxisXT = new NumberAxis();
+        NumberAxis yAxisXT = new NumberAxis();
+        xAxisXT.setLabel("Tiempo (s)");
+        yAxisXT.setLabel("Desplazamiento (m)");
+
+        // Crear la gráfica de desplazamiento x(t)
+        LineChart<Number, Number> graficoXT = new LineChart<>(xAxisXT, yAxisXT);
+        
+        VBox vbox = new VBox(graficoXT);
+        Scene dialogScene = new Scene(vbox, 300, 250);
+        dialog.setScene(dialogScene);
+        Implements.updateGraphicXT(graficoXT);
+        dialog.show();
     }
     
-    private void v_t() {
+    private void v_t(Group root3D) {
+        //Crear dialog
+        Stage dialog = new Stage();
+        dialog.setTitle("Gráfica: Velocidad en función del tiempo (v/t)");
         
+        // Ejes para la gráfica de velocidad v(t)
+        NumberAxis xAxisVT = new NumberAxis();
+        NumberAxis yAxisVT = new NumberAxis();
+        xAxisVT.setLabel("Tiempo (s)");
+        yAxisVT.setLabel("Velocidad (m/s)");
+
+        // Crear la gráfica de velocidad v(t)
+        LineChart<Number, Number> graficoVT = new LineChart<>(xAxisVT, yAxisVT);
+        
+        VBox vbox = new VBox(graficoVT);
+        Scene dialogScene = new Scene(vbox, 300, 250);
+        dialog.setScene(dialogScene);
+        Implements.updateGraphicVT(graficoVT);
+        dialog.show();
     }
     
-    private void camaraSwitch(SubScene scene, PerspectiveCamera cameraExternal, PerspectiveCamera cameraInternal) {
+    private void camaraSwitch(SubScene scene, PerspectiveCamera cameraExternal, PerspectiveCamera cameraFollow) {
          if (scene.getCamera() == cameraExternal) {
-                scene.setCamera(cameraInternal);
-                cameraInternal.setTranslateX(0); 
-                cameraInternal.setTranslateY(0);
-                cameraInternal.setTranslateZ(0);
-                cameraInternal.setRotate(0);
+                implement.preCameraFollow(cameraFollow, scene);
+                scene.setCamera(cameraFollow);
                 scene.requestFocus();
                 
             } else {
